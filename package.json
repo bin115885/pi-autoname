@@ -30,17 +30,12 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "vitest run --pool=threads",
-    "test:watch": "vitest --pool=threads"
+    "test": "node --test tests/*.test.ts",
+    "test:watch": "node --test --watch tests/*.test.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*"
-  },
-  "devDependencies": {
-    "@earendil-works/pi-ai": "^0.79.10",
-    "@earendil-works/pi-coding-agent": "^0.79.10",
-    "vitest": "^4.1.0"
   },
   "pi": {
     "extensions": [

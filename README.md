@@ -18,9 +18,9 @@
 
 | Scenario | Behavior |
 |---|---|
-| First dialogue completes | Automatically generates a semantic session name |
-| Conversation continues | Silently re-names every 10 minutes (configurable) |
-| Session topic drifts | Name updates to reflect the new focus |
+| First dialogue settles | Automatically generates a semantic session name |
+| Conversation continues | Silently considers a rename every 10 minutes (configurable) |
+| Session topic drifts | Updates only when the current name no longer fits |
 | Run `/autoname` | Manually regenerate from recent context |
 | AI naming fails | Falls back to smart text extraction |
 
@@ -54,7 +54,7 @@ Config file is **auto-generated** on first use at `~/.pi/agent/pi-autoname.json`
 | `fallbackModels` | string[] | `[]` | Additional models to try if primary fails |
 | `cooldownMinutes` | number | `10` | Minutes between periodic re-names |
 | `debug` | boolean | `false` | Enable debug logging |
-| `respectManualName` | boolean | `false` | When `false` (default), pi-autoname owns session naming: automatic naming runs on first dialogue and periodically, and may overwrite a name set via `/name` or `/autoname`. Set to `true` for the legacy behavior of treating a user-issued rename as sticky. |
+| `respectManualName` | boolean | `false` | When `false` (default), a `/name` change gets one cooldown window before automatic naming resumes. Set to `true` to keep a user-issued `/name` until `/autoname` is explicitly run. |
 
 ### Example: Model fallback chain
 
@@ -76,11 +76,11 @@ This tries models in order: `MiniMax-M2.7` → `mimo-v2-omni` → session model.
 ### Automatic naming
 
 ```
-first user message
+first complete dialogue
         ↓
-first assistant reply finishes
+Pi reaches agent_settled
         ↓
-AI generates semantic session name
+AI generates a semantic session name in the background
         ↓
 setSessionName(name)
 ```
@@ -88,21 +88,21 @@ setSessionName(name)
 ### Periodic re-naming
 
 ```
-agent_end event (new message processed)
+agent_settled event (all retry/follow-up work complete)
         ↓
 cooldown passed? (10 min default)
         ↓
-AI generates new name from recent context
+AI checks recent context against the current name
         ↓
-name changed? → silently update
-name same? → skip
+topic changed? → silently update
+name still fits? → keep it
 ```
 
 ### Model fallback chain
 
 ```
 primary model (from config)
-        ↓ failed?
+        ↓ failed within the shared 30-second budget?
 fallback models (from config)
         ↓ failed?
 session model (automatic)
@@ -126,15 +126,15 @@ Pi's native command still works:
 /name My custom title
 ```
 
-However, with `pi-autoname` installed, the periodic re-naming (`cooldownMinutes` default 10 min) will likely overwrite your `/name` change on the next `agent_end`. This is the **default** behavior (`respectManualName: false`) — pi-autoname owns the session name.
+With the default `respectManualName: false`, pi-autoname gives `/name` a full `cooldownMinutes` grace period, then may resume automatic naming if the topic changes. It observes the name change immediately through Pi's session metadata event.
 
-- For a one-shot rename that pi-autoname will then take over again: use `/name`.
+- For a one-shot rename that pi-autoname may later take over again: use `/name`.
 - To force a re-name from the current conversation right now: use `/autoname`.
-- To opt out of pi-autoname ever overwriting your `/name`: set `respectManualName: true` in the config.
+- To keep a `/name` indefinitely: set `respectManualName: true`. Running `/autoname` remains an explicit override.
 
-#### `/name` grace period
+#### Stable periodic names
 
-When you `/name` a session, pi-autoname detects the out-of-band change on the next `agent_end` and **resets the rename cooldown to now**. That gives your `/name` choice a full `cooldownMinutes` window before the next periodic rename is allowed to consider overwriting it. If the conversation topic changes earlier, the periodic rename will still run normally — `/name` is a grace period, not a lock.
+Periodic naming compares recent context with the current title. The model is asked to return the existing title unchanged when it still fits, so the extension avoids needless title churn and session metadata writes.
 
 ## 🔐 Privacy note
 
@@ -147,6 +147,16 @@ Auto-detected from system environment (`PI_LOCALE` > `LC_ALL` > `LANG`). Names a
 ## 🔗 Related
 
 - [pi-compaction-i18n](https://github.com/ssdiwu/pi-compaction-i18n) — localized compaction summaries
+
+## Development
+
+The repository has no development dependency. With Node.js 22.6 or later (Node.js 22.22.3 is the tested baseline), run the built-in TypeScript test runner directly:
+
+```bash
+npm test
+```
+
+Pi provides the two declared peer dependencies at extension runtime.
 
 ## License
 

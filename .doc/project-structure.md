@@ -2,42 +2,28 @@
 
 ## 发包入口
 
-- `package.json`：npm 元信息、pi package manifest、发包白名单。
-  - `pi.extensions` 指向 `./extensions`。
-  - `files` 只包含 `extensions/`、`README.md`、`LICENSE`、`package.json`，因此 `.doc/` 不参与发包。
-- `extensions/index.ts`：pi extension 主入口，负责自动命名、周期重命名、`/autoname` 命令。
-- `README.md`：用户安装、配置、隐私说明。
-- `LICENSE`：MIT License。
+- `package.json`：npm 元信息、Pi package manifest（包清单）与发包白名单。
+- `index.ts`：转发至 `extensions/index.ts` 的 npm / Pi 入口。
+- `extensions/index.ts`：Pi Extension（扩展）入口，负责配置、模型调用、事件注册与 `/autoname`。
+- `extensions/controller.ts`：无 Pi 依赖的命名状态控制器。
+- `extensions/lib.ts`：无副作用的配置、脱敏、对话提取和降级命名函数。
 
-## 非发包/开发辅助内容
+npm tarball（发布包）只包含 TypeScript、公开文档、许可证和元数据；`.doc/` 与 `tests/` 不发布。
 
-- `.doc/`：项目说明、审查与修复报告；不在 `package.json#files` 中，不会进入 npm tarball。
-- `.diwu/`：本地任务状态，已被 `.gitignore` 忽略。
-- `tests/`：当前为空目录。
-- `add.js`、`add.py`、`calculator.py`、`fibonacci.py`、`hello.js`：当前被 `.gitignore` 忽略，不参与 npm 发包。
-- `__pycache__/`：Python 缓存，已被 `.gitignore` 忽略。
+## 运行流程
 
-## 核心运行流程
+1. `session_start` 恢复当前分支的 `pi-autoname-state` marker（标记）。
+2. `session_info_changed` 立即记录外部 `/name` 变更。
+3. `agent_settled` 后后台考虑首次或周期命名；名称稳定时不重写。
+4. `session_shutdown` 中止未完成请求。
+5. `/autoname` 强制运行一次命名，可覆盖 sticky（固定）手工名称。
 
-1. extension 加载时读取 `~/.pi/agent/pi-autoname.json`，不存在则创建默认配置。
-2. `session_start`：根据已有 session name 和扩展持久化状态判断当前名称是扩展生成还是用户手动设置。
-3. `agent_end`：
-   - 未命名或上次仅 fallback 命名：在首轮完整对话后尝试命名。
-   - 已由扩展 AI 命名：冷却时间到后用最近上下文周期重命名。
-   - 检测为手动命名且 `respectManualName=true`：自动流程不覆盖。
-4. `/autoname`：用户手动触发一次命名，可覆盖当前名称。
+## 开发与测试
 
-## 配置文件
+- 仅使用 TypeScript（类型脚本）；项目不使用 Python（编程语言）或 Bun（运行时）。
+- `npm test` 调用 Node.js（JavaScript 运行时）内置的 `node:test`（测试 API）。
+- Pi 在扩展运行时提供 `@earendil-works/pi-ai` 和 `@earendil-works/pi-coding-agent` peer dependency（对等依赖）；项目不声明其他运行或开发依赖。
 
-默认路径：`~/.pi/agent/pi-autoname.json`
+## 本地忽略文件
 
-```json
-{
-  "enabled": true,
-  "model": "",
-  "fallbackModels": [],
-  "cooldownMinutes": 10,
-  "debug": false,
-  "respectManualName": true
-}
-```
+`.gitignore`（Git 忽略规则）排除早期试验文件、Python 缓存和 `node_modules/`；它们不参与运行或发布。

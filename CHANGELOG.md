@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Auto-naming now runs after Pi's fully settled lifecycle event, cancels stale requests on session changes, and bounds the complete model fallback chain to a shared 30-second budget.
+- Periodic naming compares the current title with recent context so unchanged topics keep their existing title; older unmarked sessions use recent context rather than an obsolete first exchange.
+- `/name` changes are observed immediately. `respectManualName: true` now keeps a manual title until `/autoname` is explicitly invoked.
+- Development tests now use Node.js built-in `node:test` directly on TypeScript. Vitest and all project development dependencies were removed.
+
 ## [0.6.5] - 2026-06-18
 
 ### Added

@@ -3,10 +3,3 @@ dist/
 *.tsbuildinfo
 .diwu/
 .dteam/
-__pycache__/
-*.pyc
-add.js
-add.py
-calculator.py
-fibonacci.py
-hello.js

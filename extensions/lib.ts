@@ -28,6 +28,11 @@ export const SENSITIVE_PATTERNS: Array<{ re: RegExp; replacement: string }> = [
   { re: /\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*["']?[^"'\s,;]+/gi, replacement: "$1=[REDACTED]" },
 ];
 
+export interface DialoguePart {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export interface AutonameConfig {
   enabled?: boolean;
   model?: string;
@@ -121,7 +126,7 @@ export function smartFallbackName(text: string): string {
 
   s = s
     .replace(
-      /^(?:我(?:觉得|感觉|发现|想要|想知道|怀疑)?\s*|你(?:能|可以|帮)\s*(?:我\s*)?|请(?:你|帮我)?\s*|Can you\s*(?:please\s*)?|Could you\s*(?:please\s*)?|Please\s*(?:help me\s*)?|I\s*(?:think|feel|want|need|noticed)\s*(?:that\s*)?|Is it possible to\s*|I wonder if\s*|I'm wondering about\s*)/i,
+      /^(?:我(?:觉得|感觉|发现|想要|想知道|怀疑)?\s*|你(?:能|可以|帮)\s*(?:我\s*)?|请(?:你|帮我)?\s*|Can you\s*(?:please\s*)?(?:help me\s*)?|Could you\s*(?:please\s*)?(?:help me\s*)?|Please\s*(?:help me\s*)?|I\s*(?:think|feel|want|need|noticed)\s*(?:that\s*)?|Is it possible to\s*|I wonder if\s*|I'm wondering about\s*)/i,
       "",
     )
     .trim();
@@ -157,7 +162,7 @@ export function parseRenameMarker(data: unknown): RenameMarker | undefined {
   if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
 
-  // user_rename flavor — written by agent_end when it detects a /name
+  // user_rename flavor — written when session_info_changed observes a /name
   // out-of-band change.
   if (obj.event === "user_rename" && typeof obj.name === "string") {
     return {
@@ -213,16 +218,41 @@ export function getFirstDialogue(branch: any[]) {
   return { firstUser, firstAssistant };
 }
 
-export function getRecentDialogue(branch: any[], maxMessages = 6) {
-  const items: Array<{ role: string; text: string }> = [];
-  for (const entry of branch) {
-    if (entry?.type === "message" && entry.message) {
-      const role = entry.message.role;
-      if (role !== "user" && role !== "assistant") continue;
-      const text = blockText(entry.message.content);
-      if (!text) continue;
-      items.push({ role, text });
-    }
+export function getRecentDialogue(branch: any[], maxMessages = 6): DialoguePart[] {
+  const items: DialoguePart[] = [];
+
+  for (let index = branch.length - 1; index >= 0 && items.length < maxMessages; index -= 1) {
+    const entry = branch[index];
+    if (entry?.type !== "message" || !entry.message) continue;
+
+    const role = entry.message.role;
+    if (role !== "user" && role !== "assistant") continue;
+
+    const text = blockText(entry.message.content);
+    if (text) items.push({ role, text });
   }
-  return items.slice(-maxMessages);
+
+  return items.reverse();
+}
+
+/**
+ * Old sessions without an autoname marker should be named from their current
+ * topic, while a new session keeps the first-dialogue behavior.
+ */
+export function getInitialDialogue(branch: any[]): DialoguePart[] {
+  const recent = getRecentDialogue(branch);
+  let messageCount = 0;
+  for (let index = branch.length - 1; index >= 0 && messageCount <= 2; index -= 1) {
+    const role = branch[index]?.message?.role;
+    if (role === "user" || role === "assistant") messageCount += 1;
+  }
+
+  if (messageCount > 2) return recent;
+
+  const { firstUser, firstAssistant } = getFirstDialogue(branch);
+  if (!firstUser || !firstAssistant) return [];
+  return [
+    { role: "user", text: firstUser },
+    { role: "assistant", text: firstAssistant },
+  ];
 }
