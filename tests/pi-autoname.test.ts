@@ -9,6 +9,7 @@ import {
   blockText,
   getFirstDialogue,
   getInitialDialogue,
+  getNamingLanguageInstruction,
   getRecentDialogue,
   isHighQualityName,
   normalizeConfig,
@@ -56,6 +57,9 @@ describe("name quality and fallback", () => {
   it("accepts concise labels and rejects sentences", () => {
     assert.equal(isHighQualityName("API重构"), true);
     assert.equal(isHighQualityName("Session naming fix"), true);
+    assert.equal(isHighQualityName("セッション命名"), true);
+    assert.equal(isHighQualityName("세션 이름"), true);
+    assert.equal(isHighQualityName("Исправление имени"), true);
     assert.equal(isHighQualityName("我想知道如何修复"), false);
     assert.equal(isHighQualityName("Good job!"), false);
     assert.equal(isHighQualityName("ab"), false);
@@ -68,6 +72,18 @@ describe("name quality and fallback", () => {
     assert.equal(smartFallbackName("Fix the bug. Then deploy it."), "Fix the bug");
     assert.equal(smartFallbackName("数据库连接的问题吗"), "数据库连接的问题");
     assert.ok(smartFallbackName("A".repeat(200)).length <= 50);
+  });
+});
+
+describe("naming language", () => {
+  it("follows the language predominantly used by the user rather than the system locale", () => {
+    assert.match(
+      getNamingLanguageInstruction([
+        { role: "user", text: "帮我修复自动命名只生成英文的问题" },
+        { role: "assistant", text: "I will investigate the regression." },
+      ]),
+      /predominantly used by the user/i,
+    );
   });
 });
 

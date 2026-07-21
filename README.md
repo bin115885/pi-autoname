@@ -140,9 +140,9 @@ Periodic naming compares recent context with the current title. The model is ask
 
 `pi-autoname` sends a short, recent conversation excerpt to the selected naming model. Before sending, it redacts common secret patterns such as API keys, bearer tokens, AWS access keys, private keys, and `*_TOKEN` / `*_SECRET` / `*_PASSWORD` environment assignments. If the AI call fails and the user text contained a detected secret, the local fallback name is skipped to avoid turning secrets into session names.
 
-## 🌍 Locale support
+## 🌍 Language support
 
-Auto-detected from system environment (`PI_LOCALE` > `LC_ALL` > `LANG`). Names are generated in the detected language.
+Names follow the language predominantly used in the user's messages, rather than the host system locale or the assistant's reply language.
 
 ## 🔗 Related
 

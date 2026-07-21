@@ -33,6 +33,17 @@ export interface DialoguePart {
   text: string;
 }
 
+/**
+ * Keep generated names in the language the user uses, independent of the
+ * host process locale or the assistant's response language.
+ */
+export function getNamingLanguageInstruction(parts: DialoguePart[]): string {
+  if (parts.some((part) => part.role === "user" && part.text.trim())) {
+    return "Write the label in the language predominantly used by the user in the <user> messages. Do not choose the assistant's language, the system locale, or the current title when they differ.";
+  }
+  return "Write the label in the user's language when it is evident from the conversation.";
+}
+
 export interface AutonameConfig {
   enabled?: boolean;
   model?: string;
@@ -107,8 +118,7 @@ export function isHighQualityName(name: string): boolean {
   if (RAW_SLICE_RE.test(name)) return false;
   if (SENTENCE_END_RE.test(name)) return false;
   if ((name.match(/[，,。！？!?]/g) || []).length > 1) return false;
-  const hasContent = /[\u4e00-\u9fff]/.test(name) || /^[A-Za-z][A-Za-z0-9_\-\s]{2,30}$/.test(name);
-  return hasContent;
+  return /[\p{L}\p{N}]/u.test(name);
 }
 
 export function blockText(content: any): string {

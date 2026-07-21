@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-07-22
+
+### Fixed
+
+- Auto-generated names now follow the language predominantly used in user messages instead of being forced by the host system locale.
+
 ## [0.6.6] - 2026-07-18
 
 ### Changed

@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import {
   DEFAULT_CONFIG,
   getInitialDialogue,
+  getNamingLanguageInstruction,
   getRecentDialogue,
   isHighQualityName,
   normalizeConfig,
@@ -150,19 +151,12 @@ function getLastRenameMarker(ctx: ExtensionContext): RenameMarker | undefined {
   return undefined;
 }
 
-function buildNamingPrompt(parts: DialoguePart[], locale: string, currentName: string | undefined): string {
+function buildNamingPrompt(parts: DialoguePart[], currentName: string | undefined): string {
   const safeCurrentName = currentName ? redactSensitiveText(currentName) : undefined;
   if (safeCurrentName?.redacted) debugLog("redacted sensitive session name before AI naming");
 
-  const language = locale.startsWith("zh")
-    ? "Use Simplified Chinese."
-    : locale.startsWith("ja")
-      ? "日本語で出力。"
-      : locale.startsWith("ko")
-        ? "한국어로 출력하세요."
-        : "Output in English.";
   const prompt = [
-    language,
+    getNamingLanguageInstruction(parts),
     "Think privately, then output only one concise session-name label (5-15 characters or words).",
     "The label must describe the current coding task, not repeat a conversational sentence.",
     "No punctuation, quotes, explanation, commas, or multiple clauses.",
@@ -193,8 +187,8 @@ function extractCleanName(response: any): string | undefined {
     .trim();
   const candidate = text || fallbackThinking;
   const cleaned = candidate
-    ?.replace(/^["'`\u201c\u201d\u3001]+|["'`\u201c\u201d\u3001]+$/g, "")
-    .replace(/[^\w\u4e00-\u9fff\s\-_/.#+]/g, "")
+    ?.replace(/^['"`\u201c\u201d\u3001]+|['"`\u201c\u201d\u3001]+$/g, "")
+    .replace(/[^\p{L}\p{N}\s\-_/.#+]/gu, "")
     .trim();
   return cleaned && isHighQualityName(cleaned) ? cleaned : undefined;
 }
@@ -263,7 +257,7 @@ async function generateName(
   if (parts.length === 0) return undefined;
 
   const config = loadConfig();
-  const prompt = buildNamingPrompt(parts, process.env.PI_LOCALE || process.env.LC_ALL || process.env.LANG || "", currentName);
+  const prompt = buildNamingPrompt(parts, currentName);
   const startedAt = Date.now();
 
   for (const model of buildModelChain(config, ctx)) {
