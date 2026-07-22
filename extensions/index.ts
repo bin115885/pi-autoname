@@ -104,6 +104,23 @@ function buildModelChain(config: AutonameConfig, ctx: ExtensionContext): unknown
   return models;
 }
 
+function getI18nLocale(pi: ExtensionAPI): string | undefined {
+  let locale: string | undefined;
+  const request = () => pi.events.emit("pi-core/i18n/requestApi", {
+    reply: (api: { getLocale?: () => unknown }) => {
+      const value = api?.getLocale?.();
+      if (typeof value === "string" && value.trim()) locale = value;
+    },
+  });
+
+  try {
+    request();
+  } catch {
+    // pi-di18n is optional; local user-message detection remains authoritative.
+  }
+  return locale;
+}
+
 export interface SessionFileDiagnostics {
   sessionFile: string;
   latestSessionName?: string;
@@ -151,12 +168,12 @@ function getLastRenameMarker(ctx: ExtensionContext): RenameMarker | undefined {
   return undefined;
 }
 
-function buildNamingPrompt(parts: DialoguePart[], currentName: string | undefined): string {
+function buildNamingPrompt(parts: DialoguePart[], currentName: string | undefined, fallbackLocale: string | undefined): string {
   const safeCurrentName = currentName ? redactSensitiveText(currentName) : undefined;
   if (safeCurrentName?.redacted) debugLog("redacted sensitive session name before AI naming");
 
   const prompt = [
-    getNamingLanguageInstruction(parts),
+    getNamingLanguageInstruction(parts, fallbackLocale),
     "Think privately, then output only one concise session-name label (5-15 characters or words).",
     "The label must describe the current coding task, not repeat a conversational sentence.",
     "No punctuation, quotes, explanation, commas, or multiple clauses.",
@@ -252,12 +269,13 @@ async function generateName(
   mode: NamingMode,
   currentName: string | undefined,
   signal: AbortSignal,
+  fallbackLocale: string | undefined,
 ): Promise<NamingResult | undefined> {
   const parts = extractDialogue(ctx, mode);
   if (parts.length === 0) return undefined;
 
   const config = loadConfig();
-  const prompt = buildNamingPrompt(parts, currentName);
+  const prompt = buildNamingPrompt(parts, currentName, fallbackLocale);
   const startedAt = Date.now();
 
   for (const model of buildModelChain(config, ctx)) {
@@ -294,7 +312,7 @@ export default function extension(pi: ExtensionAPI): void {
       getCurrentName: () => pi.getSessionName(),
       appendMarker: (marker) => pi.appendEntry(STATE_ENTRY_TYPE, marker),
       setSessionName: (name) => pi.setSessionName(name),
-      generateName: ({ mode, currentName, signal }) => generateName(ctx, mode, currentName, signal),
+      generateName: ({ mode, currentName, signal }) => generateName(ctx, mode, currentName, signal, getI18nLocale(pi)),
       debug: debugLog,
     });
     controller.restore(getLastRenameMarker(ctx), pi.getSessionName());

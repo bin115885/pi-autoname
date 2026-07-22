@@ -7,6 +7,7 @@ import {
   MAX_NAME_LENGTH,
   MIN_COOLDOWN_MINUTES,
   blockText,
+  detectDominantUserLanguage,
   getFirstDialogue,
   getInitialDialogue,
   getNamingLanguageInstruction,
@@ -76,13 +77,21 @@ describe("name quality and fallback", () => {
 });
 
 describe("naming language", () => {
-  it("follows the language predominantly used by the user rather than the system locale", () => {
+  it("detects the dominant script from user messages only", () => {
+    assert.equal(detectDominantUserLanguage([
+      { role: "user", text: "请修复自动命名的语言，并检查 /Users/diwu/Workspace/project/index.ts" },
+      { role: "assistant", text: "I will inspect the English codebase and return an English summary." },
+    ]), "Chinese");
+    assert.equal(detectDominantUserLanguage([
+      { role: "user", text: "セッションの名前を修正してください" },
+      { role: "user", text: "한국어 제목도 확인해 주세요" },
+    ]), "Japanese");
+  });
+
+  it("uses pi-di18n locale only when user text has no detectable natural language", () => {
     assert.match(
-      getNamingLanguageInstruction([
-        { role: "user", text: "帮我修复自动命名只生成英文的问题" },
-        { role: "assistant", text: "I will investigate the regression." },
-      ]),
-      /predominantly used by the user/i,
+      getNamingLanguageInstruction([{ role: "user", text: "const title = makeName();" }], "ja"),
+      /Japanese/i,
     );
   });
 });

@@ -7,8 +7,7 @@ pi-autoname 的核心逻辑所在。
 | 文件 | 职责 |
 |------|------|
 | `index.ts` | Pi Extension（扩展）入口：注册生命周期事件、`/autoname` 命令、模型调用、命名请求总预算，以及当前 session JSONL（会话日志）的调试诊断 |
-| `controller.ts` | 无 Pi 依赖的命名状态控制器：恢复 marker（标记）、处理手工改名、取消过期请求、冷却和稳定标题判定 |
-| `lib.ts` | 纯工具函数：配置规范化、敏感信息脱敏、名称质量检查、尾部对话提取、降级命名 |
+| `lib.ts` | 纯工具函数：用户消息语言检测、配置规范化、敏感信息脱敏、名称质量检查、尾部对话提取、降级命名 |
 
 ## 关键导出
 
@@ -32,6 +31,8 @@ export default function extension(pi: ExtensionAPI): void
 ### lib.ts（命名导出）
 
 纯函数：
+- `detectDominantUserLanguage(parts)` — 仅按用户自然语言消息判定中文、英文、日文或韩文主语言
+- `getNamingLanguageInstruction(parts, fallbackLocale)` — 生成显式语言提示；无可判定用户语言时才采用可选 locale 兜底
 - `normalizeConfig(input)` — 配置规范化
 - `redactSensitiveText(text)` — 敏感信息脱敏
 - `isHighQualityName(name)` — 名称质量检查

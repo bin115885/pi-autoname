@@ -33,15 +33,72 @@ export interface DialoguePart {
   text: string;
 }
 
+export type NamingLanguage = "Chinese" | "English" | "Japanese" | "Korean";
+
+function naturalLanguageText(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/(?:^|\s)(?:~\/|\/)[^\s]+/g, " ")
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(?:const|let|var|function|class|import|export|return)\b|[{};]|=>/.test(line))
+    .join(" ");
+}
+
+function scriptCount(text: string, script: RegExp): number {
+  return (text.match(script) ?? []).length;
+}
+
 /**
- * Keep generated names in the language the user uses, independent of the
- * host process locale or the assistant's response language.
+ * Determines the language from user-authored natural-language text only.
+ * CJK scripts receive extra weight so paths and code identifiers do not
+ * outweigh prose in a Chinese, Japanese, or Korean request.
  */
-export function getNamingLanguageInstruction(parts: DialoguePart[]): string {
-  if (parts.some((part) => part.role === "user" && part.text.trim())) {
-    return "Write the label in the language predominantly used by the user in the <user> messages. Do not choose the assistant's language, the system locale, or the current title when they differ.";
+export function detectDominantUserLanguage(parts: DialoguePart[]): NamingLanguage | undefined {
+  const scores: Record<NamingLanguage, number> = { Chinese: 0, English: 0, Japanese: 0, Korean: 0 };
+  const firstSeen = new Map<NamingLanguage, number>();
+  let seen = 0;
+
+  const addScore = (language: NamingLanguage, score: number) => {
+    if (score <= 0) return;
+    if (!firstSeen.has(language)) firstSeen.set(language, seen);
+    scores[language] += score;
+  };
+
+  for (const part of parts) {
+    if (part.role !== "user") continue;
+    const text = naturalLanguageText(part.text);
+    const han = scriptCount(text, /\p{Script=Han}/gu);
+    const kana = scriptCount(text, /[\u3040-\u30ff\u31f0-\u31ff]/gu);
+    const hangul = scriptCount(text, /\p{Script=Hangul}/gu);
+    addScore(kana > 0 ? "Japanese" : "Chinese", (kana > 0 ? kana + han : han) * 2);
+    addScore("Korean", hangul * 2);
+    addScore("English", scriptCount(text, /\p{Script=Latin}/gu));
+    seen += 1;
   }
-  return "Write the label in the user's language when it is evident from the conversation.";
+
+  return (Object.keys(scores) as NamingLanguage[])
+    .filter((language) => scores[language] > 0)
+    .sort((left, right) => scores[right] - scores[left] || (firstSeen.get(left) ?? Infinity) - (firstSeen.get(right) ?? Infinity))[0];
+}
+
+function localeLanguageName(locale: string): string {
+  const primary = locale.trim().replace(/_/g, "-").split("-")[0]?.toLowerCase();
+  if (primary === "zh") return "Chinese";
+  if (primary === "ja") return "Japanese";
+  if (primary === "ko") return "Korean";
+  if (primary === "en") return "English";
+  return locale.trim();
+}
+
+/** Builds an explicit language requirement for the naming model. */
+export function getNamingLanguageInstruction(parts: DialoguePart[], fallbackLocale?: string): string {
+  const language = detectDominantUserLanguage(parts);
+  if (language === "Chinese") return "Write the label in Chinese, preserving the Simplified or Traditional script used by the user. This language is determined from user messages only.";
+  if (language) return `Write the label in ${language}. This language is determined from user messages only.`;
+  if (fallbackLocale?.trim()) return `No natural-language user text was detected. Use the language selected in the user's Pi locale: ${localeLanguageName(fallbackLocale)}.`;
+  return "No natural-language user text was detected. Infer the label language from user messages only, never from assistant messages.";
 }
 
 export interface AutonameConfig {

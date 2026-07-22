@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-07-22
+
+### Fixed
+
+- Detect the dominant language from user-authored natural-language messages before naming; use pi-di18n's active `/lang` locale only as an optional fallback when the user text is code-only or unavailable.
+
 ## [0.6.7] - 2026-07-22
 
 ### Fixed
