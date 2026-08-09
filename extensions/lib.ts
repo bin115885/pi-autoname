@@ -72,9 +72,14 @@ export function detectDominantUserLanguage(parts: DialoguePart[]): NamingLanguag
     const han = scriptCount(text, /\p{Script=Han}/gu);
     const kana = scriptCount(text, /[\u3040-\u30ff\u31f0-\u31ff]/gu);
     const hangul = scriptCount(text, /\p{Script=Hangul}/gu);
+    const hasCjk = han > 0 || kana > 0 || hangul > 0;
     addScore(kana > 0 ? "Japanese" : "Chinese", (kana > 0 ? kana + han : han) * 2);
     addScore("Korean", hangul * 2);
-    addScore("English", scriptCount(text, /\p{Script=Latin}/gu));
+    // A user message that already contains CJK is a CJK-language message: the
+    // Latin characters inside it (paths, code identifiers, or system log/error
+    // noise co-injected into the same message) must not dilute the user's CJK
+    // intent. Only purely-Latin user messages contribute to English.
+    if (!hasCjk) addScore("English", scriptCount(text, /\p{Script=Latin}/gu));
     seen += 1;
   }
 

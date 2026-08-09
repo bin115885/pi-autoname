@@ -86,6 +86,26 @@ describe("naming language", () => {
       { role: "user", text: "セッションの名前を修正してください" },
       { role: "user", text: "한국어 제목도 확인해 주세요" },
     ]), "Japanese");
+
+  it("still detects English when user messages contain no CJK", () => {
+    assert.equal(detectDominantUserLanguage([
+      { role: "user", text: "Please help me name this session" },
+      { role: "assistant", text: "好的，我来处理。" },
+    ]), "English");
+  });
+  });
+
+  it("treats CJK intent as dominant over english noise injected into the same user messages", () => {
+    // 回归（来自真实 session）：pi-di18n 把英文 compaction 警告注入 user 消息，与用户中文指令
+    // 同处一个 periodic rename 窗口。旧逻辑按裸字符数累加，Latin 压过中文，整体误判为 English，
+    // 导致模型用英文命名（如 "MacWake handover summary"）。
+    const parts = [
+      { role: "user", text: "为什么无法压缩了呢？" },
+      { role: "user", text: "警告：pi-di18n compaction cancelled: rich-media payload (5877388 bytes) cannot be safely pushed out of context." },
+      { role: "user", text: "可以，请生成交接摘要，但不需要脱敏" },
+    ];
+    assert.equal(detectDominantUserLanguage(parts), "Chinese");
+    assert.match(getNamingLanguageInstruction(parts), /Chinese/);
   });
 
   it("uses pi-di18n locale only when user text has no detectable natural language", () => {
