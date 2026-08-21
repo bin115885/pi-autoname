@@ -173,7 +173,7 @@ function buildNamingPrompt(parts: DialoguePart[], currentName: string | undefine
 
   const prompt = [
     getNamingLanguageInstruction(parts, fallbackLocale),
-    "Think privately, then output only one concise session-name label (5-15 characters or words).",
+    "Think privately, then output only one concise session-name label containing 5-15 characters total.",
     "The label must describe the current coding task, not repeat a conversational sentence.",
     "No punctuation, quotes, explanation, commas, or multiple clauses.",
     safeCurrentName

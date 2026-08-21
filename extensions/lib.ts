@@ -7,7 +7,7 @@
 export const MIN_NAME_LENGTH = 3;
 
 /** Max length for a session name — anything longer is likely a raw sentence */
-export const MAX_NAME_LENGTH = 30;
+export const MAX_NAME_LENGTH = 15;
 
 /** Names matching this pattern are raw-slice fallbacks (bad) */
 export const RAW_SLICE_RE =

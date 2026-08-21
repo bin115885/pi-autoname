@@ -4,7 +4,6 @@ import { describe, it } from "node:test";
 import {
   DEFAULT_CONFIG,
   MAX_COOLDOWN_MINUTES,
-  MAX_NAME_LENGTH,
   MIN_COOLDOWN_MINUTES,
   blockText,
   detectDominantUserLanguage,
@@ -57,14 +56,15 @@ describe("configuration and privacy", () => {
 describe("name quality and fallback", () => {
   it("accepts concise labels and rejects sentences", () => {
     assert.equal(isHighQualityName("API重构"), true);
-    assert.equal(isHighQualityName("Session naming fix"), true);
+    assert.equal(isHighQualityName("Session naming"), true);
     assert.equal(isHighQualityName("セッション命名"), true);
     assert.equal(isHighQualityName("세션 이름"), true);
-    assert.equal(isHighQualityName("Исправление имени"), true);
+    assert.equal(isHighQualityName("Имя сессии"), true);
     assert.equal(isHighQualityName("我想知道如何修复"), false);
     assert.equal(isHighQualityName("Good job!"), false);
     assert.equal(isHighQualityName("ab"), false);
-    assert.equal(isHighQualityName("a".repeat(MAX_NAME_LENGTH + 1)), false);
+    assert.equal(isHighQualityName("a".repeat(15)), true);
+    assert.equal(isHighQualityName("a".repeat(16)), false);
     assert.equal(isHighQualityName("你好，世界！不错"), false);
   });
 

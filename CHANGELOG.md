@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Generated session names are now limited to 15 characters.
+
 ### Fixed
 
 - Language detection no longer lets English co-injected into a CJK user message (e.g. system warnings, error logs, or tool output that Pi places inside a user turn) outweigh the user's actual CJK intent. A user message containing any Han/Kana/Hangul is now treated as a CJK-language message; only purely-Latin user messages contribute to the English score. Fixes periodic/`/autoname` titles flipping to English when a recent user turn carried a long English warning (e.g. a `pi-di18n` compaction notice).
