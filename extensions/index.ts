@@ -5,7 +5,6 @@
  * name after a cooldown, and provides /autoname for an explicit refresh.
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { complete } from "@earendil-works/pi-ai/compat";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -234,7 +233,7 @@ async function completeWithinBudget(
   else signal.addEventListener("abort", abort, { once: true });
 
   try {
-    return await complete(
+    return await ctx.modelRegistry.complete(
       model,
       {
         systemPrompt: "You produce concise semantic labels for coding sessions.",
